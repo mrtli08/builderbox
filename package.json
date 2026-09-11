@@ -1,7 +1,7 @@
 {
   "name": "builderbox",
   "version": "1.0.0",
-  "description": "Multiplayer 2D platformer built with Canvas and Socket.IO",
+  "description": "a roblox clone ig",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
