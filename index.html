@@ -24,7 +24,6 @@
             z-index: 10;
         }
         
-        /* Chat Box Styling */
         #chat-container {
             position: absolute;
             top: 90px;
@@ -77,7 +76,7 @@
             cursor: pointer;
         }
 
-        /* Mobile On-Screen D-Pad */
+        /* Mobile Controls Layout */
         #mobile-controls {
             position: absolute;
             bottom: 30px;
@@ -108,15 +107,37 @@
         #btn-a { grid-column: 1; grid-row: 2; }
         #btn-s { grid-column: 2; grid-row: 2; }
         #btn-d { grid-column: 3; grid-row: 2; }
+
+        /* Jump Button Styling */
+        #jump-control {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 100, 100, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            user-select: none;
+        }
+        #jump-control:active {
+            background: rgba(255, 100, 100, 0.8);
+        }
     </style>
 </head>
 <body>
     <div id="ui">
         <h2>Builderbox</h2>
-        <p>Use keyboard or touch buttons to move.</p>
+        <p>Use WASD / D-pad to move, Space / Jump to jump.</p>
     </div>
 
-    <!-- Chat Box UI -->
     <div id="chat-container">
         <div id="chat-messages"></div>
         <form id="chat-form">
@@ -125,7 +146,7 @@
         </form>
     </div>
 
-    <!-- Mobile D-Pad UI -->
+    <!-- D-Pad -->
     <div id="mobile-controls">
         <div class="ctrl-btn" id="btn-w">W</div>
         <div class="ctrl-btn" id="btn-a">A</div>
@@ -133,8 +154,12 @@
         <div class="ctrl-btn" id="btn-d">D</div>
     </div>
 
-    <!-- Include Three.js and Socket.io from CDNs -->
+    <!-- Jump Button -->
+    <div id="jump-control">JUMP</div>
+
+    <!-- CDNs: Three.js, Cannon.js Physics, and Socket.io -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
