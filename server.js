@@ -16,7 +16,7 @@ io.on('connection', (socket) => {
 
     players[socket.id] = {
         x: 0,
-        y: 1,
+        y: 5,
         z: 0,
         color: '#' + Math.floor(Math.random()*16777215).toString(16)
     };
@@ -34,7 +34,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Handle incoming chat messages
     socket.on('chatMessage', (msg) => {
         if (players[socket.id]) {
             io.emit('chatMessage', {
