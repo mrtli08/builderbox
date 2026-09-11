@@ -2,7 +2,7 @@ const socket = io();
 
 // 1. Physics World Setup (Cannon.js)
 const world = new CANNON.World();
-world.gravity.set(0, -19.81, 0); // Realistic gravity
+world.gravity.set(0, -15, 0);
 
 // 2. Three.js Scene Setup
 const scene = new THREE.Scene();
@@ -22,7 +22,7 @@ scene.add(directionalLight);
 
 // 3. Ground (Physics + Visuals)
 const floorBody = new CANNON.Body({
-    mass: 0, // Mass 0 makes it static (immovable)
+    mass: 0,
     shape: new CANNON.Plane()
 });
 floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
@@ -37,11 +37,11 @@ scene.add(floorMesh);
 // 4. Local Player (Physics + Visuals)
 const playerShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
 const playerBody = new CANNON.Body({
-    mass: 5,
+    mass: 1,
     shape: playerShape,
-    position: new CANNON.Vec3(0, 5, 0)
+    position: new CANNON.Vec3(0, 5, 0),
+    linearDamping: 0.9 // Prevent endless sliding
 });
-// Lock rotation so the player box doesn't tip over like a toy block
 playerBody.fixedRotation = true;
 playerBody.updateMassProperties();
 world.addBody(playerBody);
@@ -54,7 +54,7 @@ scene.add(playerMesh);
 const otherPlayers = {};
 
 // Input Tracking
-const keys = { w: false, a: false, s: false, d: false, jump: false };
+const keys = { w: false, a: false, s: false, d: false };
 let isTyping = false;
 
 // Keyboard Listeners
@@ -78,9 +78,9 @@ function handleKey(e, isDown) {
 }
 
 function triggerJump() {
-    // Simple ground check: if vertical velocity is near zero, let them jump
-    if (Math.abs(playerBody.velocity.y) < 0.1) {
-        playerBody.velocity.y = 8; // Jump impulse force
+    // Check if player is near the ground (y is around 1 since height is 2)
+    if (playerBody.position.y < 1.5) {
+        playerBody.velocity.y = 7;
     }
 }
 
@@ -128,7 +128,9 @@ setupButton('btn-s', 's');
 setupButton('btn-d', 'd');
 
 const jumpBtn = document.getElementById('jump-control');
-['touchstart', 'mousedown'].forEach(evt => jumpBtn.addEventListener(evt, (e) => { e.preventDefault(); triggerJump(); }));
+if (jumpBtn) {
+    ['touchstart', 'mousedown'].forEach(evt => jumpBtn.addEventListener(evt, (e) => { e.preventDefault(); triggerJump(); }));
+}
 
 // Socket Event Listeners for Multiplayer
 socket.on('currentPlayers', (players) => {
@@ -165,16 +167,16 @@ function addOtherPlayer(id, playerInfo) {
 }
 
 // 5. Main Game Loop
-const moveSpeed = 5;
+const moveSpeed = 4;
 const clock = new THREE.Clock();
 
 function animate() {
     requestAnimationFrame(animate);
 
     const deltaTime = clock.getDelta();
-    world.step(1 / 60, deltaTime, 3); // Advance physics simulation
+    world.step(1 / 60, deltaTime, 3);
 
-    // Handle Movement Velocity via Physics
+    // Direct movement override on X and Z axis for smooth responsiveness
     let vx = 0;
     let vz = 0;
     if (keys.w) vz -= moveSpeed;
@@ -182,11 +184,10 @@ function animate() {
     if (keys.a) vx -= moveSpeed;
     if (keys.d) vx += moveSpeed;
 
-    // Apply horizontal velocity while preserving vertical gravity velocity (y)
     playerBody.velocity.x = vx;
     playerBody.velocity.z = vz;
 
-    // Sync Three.js visual mesh position with Cannon.js physics body position
+    // Sync Three.js mesh with physics body
     playerMesh.position.copy(playerBody.position);
     playerMesh.quaternion.copy(playerBody.quaternion);
 
