@@ -21,10 +21,7 @@ io.on('connection', (socket) => {
         color: '#' + Math.floor(Math.random()*16777215).toString(16)
     };
 
-    // Send existing players to the new player
     socket.emit('currentPlayers', players);
-
-    // Broadcast new player to everyone else
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
 
     socket.on('playerMovement', (movementData) => {
@@ -37,10 +34,20 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle incoming chat messages
+    socket.on('chatMessage', (msg) => {
+        if (players[socket.id]) {
+            io.emit('chatMessage', {
+                id: socket.id,
+                message: msg,
+                color: players[socket.id].color
+            });
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log(`Player disconnected: ${socket.id}`);
         delete players[socket.id];
-        // Use a safe custom event name instead of 'disconnect'
         io.emit('removePlayer', socket.id);
     });
 });
