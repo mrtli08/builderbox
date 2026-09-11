@@ -1,5 +1,10 @@
 const socket = io();
 
+// 1. Physics World Setup (Cannon.js)
+const world = new CANNON.World();
+world.gravity.set(0, -19.81, 0); // Realistic gravity
+
+// 2. Three.js Scene Setup
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
@@ -15,32 +20,48 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
+// 3. Ground (Physics + Visuals)
+const floorBody = new CANNON.Body({
+    mass: 0, // Mass 0 makes it static (immovable)
+    shape: new CANNON.Plane()
+});
+floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+world.addBody(floorBody);
+
 const floorGeometry = new THREE.PlaneGeometry(100, 100);
 const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x55aa55 });
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
+const floorMesh = new THREE.Mesh(floorGeometry, floorMaterial);
+floorMesh.rotation.x = -Math.PI / 2;
+scene.add(floorMesh);
 
-const otherPlayers = {};
-let localPlayerId = null;
+// 4. Local Player (Physics + Visuals)
+const playerShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
+const playerBody = new CANNON.Body({
+    mass: 5,
+    shape: playerShape,
+    position: new CANNON.Vec3(0, 5, 0)
+});
+// Lock rotation so the player box doesn't tip over like a toy block
+playerBody.fixedRotation = true;
+playerBody.updateMassProperties();
+world.addBody(playerBody);
 
 const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
 const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
-const player = new THREE.Mesh(playerGeometry, playerMaterial);
-player.position.y = 1;
-scene.add(player);
+const playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+scene.add(playerMesh);
 
-camera.position.set(0, 5, 7);
-camera.lookAt(player.position);
+const otherPlayers = {};
 
 // Input Tracking
-const keys = { w: false, a: false, s: false, d: false };
+const keys = { w: false, a: false, s: false, d: false, jump: false };
 let isTyping = false;
 
 // Keyboard Listeners
 window.addEventListener('keydown', (e) => {
-    if (isTyping) return; // Don't trigger movement if user is typing in chat
-    handleKey(e, true);
+    if (isTyping) return;
+    if (e.code === 'Space') { triggerJump(); e.preventDefault(); }
+    else handleKey(e, true);
 });
 window.addEventListener('keyup', (e) => {
     if (isTyping) return;
@@ -53,6 +74,13 @@ function handleKey(e, isDown) {
         case 'a': case 'arrowleft': keys.a = isDown; break;
         case 's': case 'arrowdown': keys.s = isDown; break;
         case 'd': case 'arrowright': keys.d = isDown; break;
+    }
+}
+
+function triggerJump() {
+    // Simple ground check: if vertical velocity is near zero, let them jump
+    if (Math.abs(playerBody.velocity.y) < 0.1) {
+        playerBody.velocity.y = 8; // Jump impulse force
     }
 }
 
@@ -78,33 +106,20 @@ socket.on('chatMessage', (data) => {
     const shortId = data.id.substring(0, 4);
     msgEl.innerHTML = `<b style="color: ${data.color}">[${shortId}]:</b> ${escapeHtml(data.message)}`;
     chatMessages.appendChild(msgEl);
-    chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// Basic helper to prevent raw HTML injection
 function escapeHtml(text) {
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// Mobile Touch Button Listeners
+// Mobile Touch Controls Setup
 const setupButton = (id, keyName) => {
     const btn = document.getElementById(id);
     if (!btn) return;
-
-    ['touchstart', 'mousedown'].forEach(evt => {
-        btn.addEventListener(evt, (e) => {
-            e.preventDefault();
-            if (!isTyping) keys[keyName] = true;
-        });
-    });
-
-    ['touchend', 'mouseup', 'mouseleave'].forEach(evt => {
-        btn.addEventListener(evt, (e) => {
-            e.preventDefault();
-            keys[keyName] = false;
-        });
-    });
+    ['touchstart', 'mousedown'].forEach(evt => btn.addEventListener(evt, (e) => { e.preventDefault(); if (!isTyping) keys[keyName] = true; }));
+    ['touchend', 'mouseup', 'mouseleave'].forEach(evt => btn.addEventListener(evt, (e) => { e.preventDefault(); keys[keyName] = false; }));
 };
 
 setupButton('btn-w', 'w');
@@ -112,12 +127,13 @@ setupButton('btn-a', 'a');
 setupButton('btn-s', 's');
 setupButton('btn-d', 'd');
 
-// Socket Event Listeners
+const jumpBtn = document.getElementById('jump-control');
+['touchstart', 'mousedown'].forEach(evt => jumpBtn.addEventListener(evt, (e) => { e.preventDefault(); triggerJump(); }));
+
+// Socket Event Listeners for Multiplayer
 socket.on('currentPlayers', (players) => {
     Object.keys(players).forEach((id) => {
-        if (id !== socket.id) {
-            addOtherPlayer(id, players[id]);
-        }
+        if (id !== socket.id) addOtherPlayer(id, players[id]);
     });
 });
 
@@ -140,7 +156,6 @@ socket.on('removePlayer', (id) => {
 
 function addOtherPlayer(id, playerInfo) {
     if (otherPlayers[id]) return;
-
     const geo = new THREE.BoxGeometry(1, 2, 1);
     const mat = new THREE.MeshStandardMaterial({ color: playerInfo.color || 0x3333ff });
     const p = new THREE.Mesh(geo, mat);
@@ -149,27 +164,44 @@ function addOtherPlayer(id, playerInfo) {
     otherPlayers[id] = p;
 }
 
-const speed = 0.1;
+// 5. Main Game Loop
+const moveSpeed = 5;
+const clock = new THREE.Clock();
+
 function animate() {
     requestAnimationFrame(animate);
 
-    let moved = false;
-    if (keys.w) { player.position.z -= speed; moved = true; }
-    if (keys.s) { player.position.z += speed; moved = true; }
-    if (keys.a) { player.position.x -= speed; moved = true; }
-    if (keys.d) { player.position.x += speed; moved = true; }
+    const deltaTime = clock.getDelta();
+    world.step(1 / 60, deltaTime, 3); // Advance physics simulation
 
-    if (moved) {
-        socket.emit('playerMovement', {
-            x: player.position.x,
-            y: player.position.y,
-            z: player.position.z
-        });
-    }
+    // Handle Movement Velocity via Physics
+    let vx = 0;
+    let vz = 0;
+    if (keys.w) vz -= moveSpeed;
+    if (keys.s) vz += moveSpeed;
+    if (keys.a) vx -= moveSpeed;
+    if (keys.d) vx += moveSpeed;
 
-    camera.position.x = player.position.x;
-    camera.position.z = player.position.z + 7;
-    camera.lookAt(player.position.x, player.position.y, player.position.z);
+    // Apply horizontal velocity while preserving vertical gravity velocity (y)
+    playerBody.velocity.x = vx;
+    playerBody.velocity.z = vz;
+
+    // Sync Three.js visual mesh position with Cannon.js physics body position
+    playerMesh.position.copy(playerBody.position);
+    playerMesh.quaternion.copy(playerBody.quaternion);
+
+    // Send position to server
+    socket.emit('playerMovement', {
+        x: playerBody.position.x,
+        y: playerBody.position.y,
+        z: playerBody.position.z
+    });
+
+    // Camera follow
+    camera.position.x = playerMesh.position.x;
+    camera.position.y = playerMesh.position.y + 4;
+    camera.position.z = playerMesh.position.z + 7;
+    camera.lookAt(playerMesh.position.x, playerMesh.position.y, playerMesh.position.z);
 
     renderer.render(scene, camera);
 }
