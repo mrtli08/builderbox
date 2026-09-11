@@ -35,10 +35,17 @@ camera.lookAt(player.position);
 
 // Input Tracking
 const keys = { w: false, a: false, s: false, d: false };
+let isTyping = false;
 
 // Keyboard Listeners
-window.addEventListener('keydown', (e) => handleKey(e, true));
-window.addEventListener('keyup', (e) => handleKey(e, false));
+window.addEventListener('keydown', (e) => {
+    if (isTyping) return; // Don't trigger movement if user is typing in chat
+    handleKey(e, true);
+});
+window.addEventListener('keyup', (e) => {
+    if (isTyping) return;
+    handleKey(e, false);
+});
 
 function handleKey(e, isDown) {
     switch (e.key.toLowerCase()) {
@@ -49,6 +56,37 @@ function handleKey(e, isDown) {
     }
 }
 
+// Chat Functionality
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessages = document.getElementById('chat-messages');
+
+chatInput.addEventListener('focus', () => { isTyping = true; });
+chatInput.addEventListener('blur', () => { isTyping = false; });
+
+chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (text) {
+        socket.emit('chatMessage', text);
+        chatInput.value = '';
+    }
+});
+
+socket.on('chatMessage', (data) => {
+    const msgEl = document.createElement('div');
+    const shortId = data.id.substring(0, 4);
+    msgEl.innerHTML = `<b style="color: ${data.color}">[${shortId}]:</b> ${escapeHtml(data.message)}`;
+    chatMessages.appendChild(msgEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+});
+
+// Basic helper to prevent raw HTML injection
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
 // Mobile Touch Button Listeners
 const setupButton = (id, keyName) => {
     const btn = document.getElementById(id);
@@ -57,7 +95,7 @@ const setupButton = (id, keyName) => {
     ['touchstart', 'mousedown'].forEach(evt => {
         btn.addEventListener(evt, (e) => {
             e.preventDefault();
-            keys[keyName] = true;
+            if (!isTyping) keys[keyName] = true;
         });
     });
 
