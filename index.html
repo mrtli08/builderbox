@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Builderbox</title>
     <style>
         body {
@@ -11,6 +11,7 @@
             font-family: sans-serif;
             background: #111;
             color: white;
+            touch-action: none; /* Prevents default mobile scrolling/zooming */
         }
         #ui {
             position: absolute;
@@ -21,12 +22,58 @@
             padding: 10px;
             border-radius: 5px;
         }
+        /* Mobile On-Screen D-Pad */
+        #mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            display: none;
+            grid-template-columns: repeat(3, 65px);
+            grid-template-rows: repeat(2, 65px);
+            gap: 10px;
+            z-index: 10;
+        }
+        .ctrl-btn {
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .ctrl-btn:active {
+            background: rgba(255, 255, 255, 0.6);
+        }
+        #btn-w { grid-column: 2; grid-row: 1; }
+        #btn-a { grid-column: 1; grid-row: 2; }
+        #btn-s { grid-column: 2; grid-row: 2; }
+        #btn-d { grid-column: 3; grid-row: 2; }
+
+        /* Automatically show buttons on mobile screens (or you can remove this query to test on desktop) */
+        @media (max-width: 1024px) {
+            #mobile-controls {
+                display: grid;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="ui">
         <h2>Builderbox</h2>
-        <p>Use <b>W, A, S, D</b> or Arrow Keys to move.</p>
+        <p>Use keyboard or touch buttons to move.</p>
+    </div>
+
+    <!-- Mobile D-Pad UI -->
+    <div id="mobile-controls">
+        <div class="ctrl-btn" id="btn-w">W</div>
+        <div class="ctrl-btn" id="btn-a">A</div>
+        <div class="ctrl-btn" id="btn-s">S</div>
+        <div class="ctrl-btn" id="btn-d">D</div>
     </div>
 
     <!-- Include Three.js and Socket.io from CDNs -->
