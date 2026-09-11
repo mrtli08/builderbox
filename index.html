@@ -23,16 +23,70 @@
             border-radius: 5px;
             z-index: 10;
         }
-        /* Mobile On-Screen D-Pad - Forced to show now! */
+        
+        /* Chat Box Styling */
+        #chat-container {
+            position: absolute;
+            top: 90px;
+            left: 10px;
+            width: 280px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px;
+            z-index: 100;
+        }
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 13px;
+            margin-bottom: 6px;
+            word-break: break-word;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #chat-form {
+            display: flex;
+            gap: 5px;
+        }
+        #chat-input {
+            flex-grow: 1;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            outline: none;
+            font-size: 13px;
+        }
+        #chat-input:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: #3399ff;
+        }
+        #chat-form button {
+            background: #3399ff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Mobile On-Screen D-Pad */
         #mobile-controls {
             position: absolute;
             bottom: 30px;
             left: 30px;
-            display: grid; /* Always visible now */
+            display: grid;
             grid-template-columns: repeat(3, 65px);
             grid-template-rows: repeat(2, 65px);
             gap: 10px;
-            z-index: 100; /* High z-index so it sits on top of the 3D canvas */
+            z-index: 100;
         }
         .ctrl-btn {
             background: rgba(255, 255, 255, 0.25);
@@ -59,7 +113,16 @@
 <body>
     <div id="ui">
         <h2>Builderbox</h2>
-        <p>Use keyboard or click/touch buttons to move.</p>
+        <p>Use keyboard or touch buttons to move.</p>
+    </div>
+
+    <!-- Chat Box UI -->
+    <div id="chat-container">
+        <div id="chat-messages"></div>
+        <form id="chat-form">
+            <input type="text" id="chat-input" placeholder="Type a chat message..." autocomplete="off" />
+            <button type="submit">Send</button>
+        </form>
     </div>
 
     <!-- Mobile D-Pad UI -->
