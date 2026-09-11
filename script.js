@@ -1,15 +1,13 @@
 const socket = io();
 
-// 1. Scene, Camera, Renderer setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb); // Sky blue
+scene.background = new THREE.Color(0x87ceeb);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// 2. Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
@@ -17,30 +15,28 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
 
-// 3. Ground / Floor
 const floorGeometry = new THREE.PlaneGeometry(100, 100);
 const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x55aa55 });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
-// Track other players
 const otherPlayers = {};
 let localPlayerId = null;
 
-// My player object
 const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
 const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff3333 });
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 player.position.y = 1;
 scene.add(player);
 
-// Camera follows local player
 camera.position.set(0, 5, 7);
 camera.lookAt(player.position);
 
-// 4. Input Handling
+// Input Tracking
 const keys = { w: false, a: false, s: false, d: false };
+
+// Keyboard Listeners
 window.addEventListener('keydown', (e) => handleKey(e, true));
 window.addEventListener('keyup', (e) => handleKey(e, false));
 
@@ -53,13 +49,35 @@ function handleKey(e, isDown) {
     }
 }
 
-// 5. Socket Event Listeners
+// Mobile Touch Button Listeners
+const setupButton = (id, keyName) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+
+    ['touchstart', 'mousedown'].forEach(evt => {
+        btn.addEventListener(evt, (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+        });
+    });
+
+    ['touchend', 'mouseup', 'mouseleave'].forEach(evt => {
+        btn.addEventListener(evt, (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        });
+    });
+};
+
+setupButton('btn-w', 'w');
+setupButton('btn-a', 'a');
+setupButton('btn-s', 's');
+setupButton('btn-d', 'd');
+
+// Socket Event Listeners
 socket.on('currentPlayers', (players) => {
     Object.keys(players).forEach((id) => {
-        if (id === socket.id) {
-            localPlayerId = id;
-            player.position.set(players[id].x, players[id].y, players[id].z);
-        } else {
+        if (id !== socket.id) {
             addOtherPlayer(id, players[id]);
         }
     });
@@ -75,7 +93,7 @@ socket.on('playerMoved', (data) => {
     }
 });
 
-socket.on('disconnect', (id) => {
+socket.on('removePlayer', (id) => {
     if (otherPlayers[id]) {
         scene.remove(otherPlayers[id]);
         delete otherPlayers[id];
@@ -83,6 +101,8 @@ socket.on('disconnect', (id) => {
 });
 
 function addOtherPlayer(id, playerInfo) {
+    if (otherPlayers[id]) return;
+
     const geo = new THREE.BoxGeometry(1, 2, 1);
     const mat = new THREE.MeshStandardMaterial({ color: playerInfo.color || 0x3333ff });
     const p = new THREE.Mesh(geo, mat);
@@ -91,7 +111,6 @@ function addOtherPlayer(id, playerInfo) {
     otherPlayers[id] = p;
 }
 
-// 6. Game Loop
 const speed = 0.1;
 function animate() {
     requestAnimationFrame(animate);
@@ -110,7 +129,6 @@ function animate() {
         });
     }
 
-    // Keep camera synced behind player
     camera.position.x = player.position.x;
     camera.position.z = player.position.z + 7;
     camera.lookAt(player.position.x, player.position.y, player.position.z);
@@ -120,7 +138,6 @@ function animate() {
 
 animate();
 
-// Resize Handler
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
