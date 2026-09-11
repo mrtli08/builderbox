@@ -23,7 +23,8 @@ scene.add(directionalLight);
 // 3. Ground (Physics + Visuals)
 const floorBody = new CANNON.Body({
     mass: 0,
-    shape: new CANNON.Plane()
+    shape: new CANNON.Plane(),
+    material: new CANNON.Material({ friction: 0.0 }) // Zero friction ground so you never get stuck!
 });
 floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
 world.addBody(floorBody);
@@ -40,7 +41,7 @@ const playerBody = new CANNON.Body({
     mass: 1,
     shape: playerShape,
     position: new CANNON.Vec3(0, 5, 0),
-    linearDamping: 0.9 // Prevent endless sliding
+    material: new CANNON.Material({ friction: 0.0 }) // Zero friction player
 });
 playerBody.fixedRotation = true;
 playerBody.updateMassProperties();
@@ -78,8 +79,8 @@ function handleKey(e, isDown) {
 }
 
 function triggerJump() {
-    // Check if player is near the ground (y is around 1 since height is 2)
-    if (playerBody.position.y < 1.5) {
+    // Generous ground check so jumping always works
+    if (playerBody.position.y < 1.6 && Math.abs(playerBody.velocity.y) < 1) {
         playerBody.velocity.y = 7;
     }
 }
@@ -167,7 +168,7 @@ function addOtherPlayer(id, playerInfo) {
 }
 
 // 5. Main Game Loop
-const moveSpeed = 4;
+const moveSpeed = 5;
 const clock = new THREE.Clock();
 
 function animate() {
@@ -176,7 +177,9 @@ function animate() {
     const deltaTime = clock.getDelta();
     world.step(1 / 60, deltaTime, 3);
 
-    // Direct movement override on X and Z axis for smooth responsiveness
+    // Wake up the physics body so it's always responsive to input
+    playerBody.wakeUp();
+
     let vx = 0;
     let vz = 0;
     if (keys.w) vz -= moveSpeed;
@@ -184,6 +187,7 @@ function animate() {
     if (keys.a) vx -= moveSpeed;
     if (keys.d) vx += moveSpeed;
 
+    // Directly assign velocity while keeping the current falling/jumping velocity intact
     playerBody.velocity.x = vx;
     playerBody.velocity.z = vz;
 
